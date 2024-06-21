@@ -47,9 +47,7 @@ def main():
     learning_rate = args.learning_rate
 
     f = open(os.path.join(checkpoint_path, "args.txt"), "a")
-    f.write(str(batch_size))
-    f.write(str(num_epochs))
-    f.write(str(learning_rate))
+    f.write(",".join([str(batch_size), str(num_epochs), str(learning_rate)]))
     f.close()
 
     train_transform = A.Compose(
