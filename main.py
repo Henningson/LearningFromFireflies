@@ -42,8 +42,15 @@ def main():
     checkpoint_path = os.path.join("checkpoints/", checkpoint_name)
     os.mkdir(checkpoint_path)
     os.mkdir(os.path.join("checkpoints", checkpoint_name, "results"))
-    batch_size = args["batch_size"]
-    num_epochs = args["num_epochs"]
+    batch_size = args.batch_size
+    num_epochs = args.num_epochs
+    learning_rate = args.learning_rate
+
+    f = open(os.path.join(checkpoint_path, "args.txt"), "a")
+    f.write(str(batch_size))
+    f.write(str(num_epochs))
+    f.write(str(learning_rate))
+    f.close()
 
     train_transform = A.Compose(
         [
@@ -72,14 +79,14 @@ def main():
     )
 
     train_ds = dataset.FirefliesDataset(
-        os.path.join(args["ff_path"], "train"), transform=train_transform
+        os.path.join(args.ff_path, "train"), transform=train_transform
     )
     class_weights = 1 - train_ds.generate_dataset_fingerprint().float().to(DEVICE)
     val_ds = dataset.FirefliesDataset(
-        os.path.join(args["ff_path"], "eval"), transform=eval_transform
+        os.path.join(args.ff_path, "eval"), transform=eval_transform
     )
     test_ds = dataset.HLEPlusPlus(
-        args["hle_path"],
+        args.hle_path,
         ["CF", "CM", "DD", "FH", "LS", "MK", "MS", "RH", "SS", "TM"],
         transform=eval_transform,
     )
@@ -146,7 +153,7 @@ def main():
     model = unet.UNet().to(DEVICE)
     loss_func = nn.CrossEntropyLoss(weight=class_weights)
     optimizer = optim.SGD(
-        model.parameters(), lr=0.1, momentum=0.9, weight_decay=0.00005
+        model.parameters(), lr=learning_rate, momentum=0.9, weight_decay=0.00005
     )
     scheduler = lr_scheduler.PolynomialLR(optimizer, num_epochs, power=0.9)
     for epoch in tqdm(range(num_epochs)):
