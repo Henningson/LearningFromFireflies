@@ -15,6 +15,11 @@ import cv2
 import numpy as np
 import lr_scheduler
 import csv
+import string
+import random
+
+from ConfigArgsParser import ConfigArgsParser
+from Args import GlobalArgumentParser
 
 from albumentations.pytorch import ToTensorV2
 from tqdm import tqdm
@@ -24,13 +29,21 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 torch.manual_seed(0)
 
 
+def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
+    return "".join(random.choice(chars) for _ in range(size))
+
+
 def main():
+    parser = GlobalArgumentParser()
+    args = parser.parse_args()
+
     checkpoint_name = datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
+    checkpoint_name = checkpoint_name + "_" + id_generator(6)
     checkpoint_path = os.path.join("checkpoints/", checkpoint_name)
     os.mkdir(checkpoint_path)
     os.mkdir(os.path.join("checkpoints", checkpoint_name, "results"))
-    batch_size = 16
-    num_epochs = 100
+    batch_size = args["batch_size"]
+    num_epochs = args["num_epochs"]
 
     train_transform = A.Compose(
         [
@@ -59,14 +72,14 @@ def main():
     )
 
     train_ds = dataset.FirefliesDataset(
-        "fireflies_dataset_v2/train/", transform=train_transform
+        os.path.join(args["ff_path"], "train"), transform=train_transform
     )
     class_weights = 1 - train_ds.generate_dataset_fingerprint().float().to(DEVICE)
     val_ds = dataset.FirefliesDataset(
-        "fireflies_dataset_v2/eval", transform=eval_transform
+        os.path.join(args["ff_path"], "eval"), transform=eval_transform
     )
     test_ds = dataset.HLEPlusPlus(
-        "HLE_dataset",
+        args["hle_path"],
         ["CF", "CM", "DD", "FH", "LS", "MK", "MS", "RH", "SS", "TM"],
         transform=eval_transform,
     )
