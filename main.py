@@ -38,7 +38,7 @@ def main():
     args = parser.parse_args()
 
     checkpoint_name = datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
-    checkpoint_name = checkpoint_name + "_" + id_generator(6) + "_WD"
+    checkpoint_name = checkpoint_name + "_" + id_generator(6) + "_WD_W"
     checkpoint_path = os.path.join("checkpoints/", checkpoint_name)
     os.mkdir(checkpoint_path)
     os.mkdir(os.path.join("checkpoints", checkpoint_name, "results"))
@@ -149,7 +149,7 @@ def main():
         )
 
     model = unet.UNet().to(DEVICE)
-    loss_func = nn.CrossEntropyLoss(weight=class_weights)
+    loss_func = nn.CrossEntropyLoss()
     optimizer = optim.SGD(
         model.parameters(), lr=learning_rate, momentum=0.9,
     )
