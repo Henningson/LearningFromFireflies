@@ -137,11 +137,11 @@ def main():
             [
                 "DiceSyn",
                 "IoUSyn",
-                "F1Syn",
+                "AccuracySyn",
                 "LossSyn",
                 "DiceReal",
                 "IoUReal",
-                "F1Real",
+                "AccuracyReal",
                 "LossReal",
                 "TrainLoss",
             ]
@@ -254,7 +254,7 @@ def evaluate(val_loader, model, loss_func):
 
     dice = torchmetrics.Dice(num_classes=3)
     iou = torchmetrics.JaccardIndex(task="multiclass", num_classes=3)
-    f1 = torchmetrics.F1Score(task="multiclass", num_classes=3)
+    f1 = torchmetrics.Accuracy(task="multiclass", num_classes=3)
 
     for images, gt_seg in val_loader:
 

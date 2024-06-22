@@ -135,11 +135,11 @@ def main():
         writer = csv.writer(csvfile)
         writer.writerow(
             [
-                "DiceSyn",
+                "AccuracySyn",
                 "IoUSyn",
                 "F1Syn",
                 "LossSyn",
-                "DiceReal",
+                "AccuracyReal",
                 "IoUReal",
                 "F1Real",
                 "LossReal",
