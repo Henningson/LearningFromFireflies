@@ -228,7 +228,7 @@ def visualize(loader, model, epoch, checkpoint_path):
     for images, gt_seg in loader:
         images = images.to(device=DEVICE)
         gt_seg = gt_seg.to(device=DEVICE)
-        pred_seg = (model(images).sigmoid(dim=1) > 0.5) * 1
+        pred_seg = (model(images).sigmoid() > 0.5) * 1
 
         pred_seg = pred_seg.cpu().numpy()
         pred_seg = pred_seg.astype(np.float32)
@@ -238,7 +238,7 @@ def visualize(loader, model, epoch, checkpoint_path):
 
         imagas = images.cpu().numpy()
 
-        ims = cv2.hconcat([imagas[0, 0], pred_seg[0], gt_segs[0]])
+        ims = cv2.hconcat([imagas[0, 0], pred_seg[0, 0], gt_segs[0]])
         ims = (ims * 255).astype(np.uint8)
         cv2.imwrite(os.path.join(folder_path, "{0:05d}.png".format(count)), ims)
         count += 1
@@ -250,7 +250,7 @@ def evaluate(val_loader, model, loss_func):
 
     model.eval()
 
-    dice = torchmetrics.Dice(num_classes=2)
+    dice = torchmetrics.Accuracy(task="binary")
     iou = torchmetrics.JaccardIndex(task="binary")
     f1 = torchmetrics.F1Score(task="binary", num_classes=2)
 
@@ -259,8 +259,8 @@ def evaluate(val_loader, model, loss_func):
         images = images.to(device=DEVICE)
         gt_seg = gt_seg.long().to(device=DEVICE)
 
-        pred_seg = model(images)
-        softmax = model(images).sigmoid(dim=1)
+        pred_seg = model(images).squeeze()
+        softmax = pred_seg.sigmoid()
         dice(softmax.cpu(), gt_seg.cpu())
         iou(softmax.cpu(), gt_seg.cpu())
         f1(softmax.cpu(), gt_seg.cpu())
