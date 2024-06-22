@@ -38,7 +38,7 @@ def main():
     args = parser.parse_args()
 
     checkpoint_name = datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
-    checkpoint_name = checkpoint_name + "_" + id_generator(6) + "_WD_W"
+    checkpoint_name = checkpoint_name + "_" + id_generator(6) + "_WD_W_AFFINE"
     checkpoint_path = os.path.join("checkpoints/", checkpoint_name)
     os.mkdir(checkpoint_path)
     os.mkdir(os.path.join("checkpoints", checkpoint_name, "results"))
@@ -52,7 +52,6 @@ def main():
 
     train_transform = A.Compose(
         [
-            A.Affine(translate_percent=0.15, p=0.5),
             A.HorizontalFlip(p=0.5),
             A.VerticalFlip(p=0.5),
             A.Perspective(scale=(0.05, 0.2), p=0.5),
