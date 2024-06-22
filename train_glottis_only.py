@@ -38,7 +38,7 @@ def main():
     args = parser.parse_args()
 
     checkpoint_name = datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
-    checkpoint_name = checkpoint_name + "_" + id_generator(6) + "_WD_W_AFFINE"
+    checkpoint_name = "GO" + checkpoint_name + "_" + id_generator(6)
     checkpoint_path = os.path.join("checkpoints/", checkpoint_name)
     os.mkdir(checkpoint_path)
     os.mkdir(os.path.join("checkpoints", checkpoint_name, "results"))
@@ -75,14 +75,14 @@ def main():
         ]
     )
 
-    train_ds = dataset.FirefliesDataset(
+    train_ds = dataset.FirefliesOnlyGlottis(
         os.path.join(args.ff_path, "train"), transform=train_transform
     )
-    class_weights = 1 - train_ds.generate_dataset_fingerprint().float().to(DEVICE)
-    val_ds = dataset.FirefliesDataset(
+
+    val_ds = dataset.FirefliesOnlyGlottis(
         os.path.join(args.ff_path, "eval"), transform=eval_transform
     )
-    test_ds = dataset.HLEPlusPlus(
+    test_ds = dataset.HLEOnlyGlottis(
         args.hle_path,
         ["CF", "CM", "DD", "FH", "LS", "MK", "MS", "RH", "SS", "TM"],
         transform=eval_transform,
@@ -147,8 +147,8 @@ def main():
             ]
         )
 
-    model = unet.UNet().to(DEVICE)
-    loss_func = nn.CrossEntropyLoss()
+    model = unet.UNet(out_channels=1).to(DEVICE)
+    loss_func = nn.BCEWithLogitsLoss()
     optimizer = optim.SGD(
         model.parameters(),
         lr=learning_rate,
@@ -207,8 +207,8 @@ def train(train_loader, loss_func, model, scheduler):
         gt_seg = gt_seg.to(device=DEVICE)
 
         # forward
-        pred_seg = model(images)
-        loss = loss_func(pred_seg.float(), gt_seg.long())
+        pred_seg = model(images).squeeze()
+        loss = loss_func(pred_seg.float(), gt_seg.float())
 
         loss.backward()
         scheduler.step()
@@ -228,14 +228,12 @@ def visualize(loader, model, epoch, checkpoint_path):
     for images, gt_seg in loader:
         images = images.to(device=DEVICE)
         gt_seg = gt_seg.to(device=DEVICE)
-        pred_seg = model(images).softmax(dim=1).argmax(dim=1)
+        pred_seg = (model(images).sigmoid(dim=1) > 0.5) * 1
 
         pred_seg = pred_seg.cpu().numpy()
-        pred_seg = pred_seg / pred_seg.max()
         pred_seg = pred_seg.astype(np.float32)
 
         gt_segs = gt_seg.cpu().numpy()
-        gt_segs = gt_segs / gt_segs.max()
         gt_segs = gt_segs.astype(np.float32)
 
         imagas = images.cpu().numpy()
@@ -252,9 +250,9 @@ def evaluate(val_loader, model, loss_func):
 
     model.eval()
 
-    dice = torchmetrics.Dice(num_classes=3)
-    iou = torchmetrics.JaccardIndex(task="multiclass", num_classes=3)
-    f1 = torchmetrics.F1Score(task="multiclass", num_classes=3)
+    dice = torchmetrics.Dice(num_classes=2)
+    iou = torchmetrics.JaccardIndex(task="binary")
+    f1 = torchmetrics.F1Score(task="binary", num_classes=2)
 
     for images, gt_seg in val_loader:
 
@@ -262,13 +260,12 @@ def evaluate(val_loader, model, loss_func):
         gt_seg = gt_seg.long().to(device=DEVICE)
 
         pred_seg = model(images)
-        softmax = pred_seg.softmax(dim=1).detach()
-
+        softmax = model(images).sigmoid(dim=1)
         dice(softmax.cpu(), gt_seg.cpu())
         iou(softmax.cpu(), gt_seg.cpu())
         f1(softmax.cpu(), gt_seg.cpu())
 
-        loss = loss_func(pred_seg.detach(), gt_seg).item()
+        loss = loss_func(pred_seg.detach(), gt_seg.float()).item()
         running_average += loss
         count += images.shape[0]
 

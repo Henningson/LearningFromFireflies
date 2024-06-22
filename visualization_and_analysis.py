@@ -60,7 +60,7 @@ def generate_csv_graph(path: str) -> None:
 
 
 if __name__ == "__main__":
-    path = "checkpoints/2024-06-21-18:56:27_JTR18L"
+    path = "checkpoints/GO2024-06-22-19:13:05_4KTZAD"
 
     # vis_segmentation_and_image("fireflies_dataset/train/")
     generate_csv_graph(path)
