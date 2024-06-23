@@ -240,4 +240,4 @@ class HLEOnlyGlottis(Dataset):
             image = augmentations["image"]
             segmentation = augmentations["masks"][0]
 
-        return image, segmentation
+        return image, segmentation.int()

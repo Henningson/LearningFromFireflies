@@ -29,6 +29,15 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 torch.manual_seed(0)
 
 
+"""
+--train_keys DD,FH,LS,MK,MS,RH,SS,TM --eval_keys CF,CM
+--train_keys CF,CM,LS,MK,MS,RH,SS,TM --eval_keys DD,FH
+--train_keys CF,CM,DD,FH,MK,MS,SS,TM --eval_keys LS,RH
+--train_keys CF,CM,DD,FH,LS,RH,SS,TM --eval_keys MK,MS
+--train_keys CF,CM,DD,FH,LS,MK,MS,RH --eval_keys SS,TM
+"""
+
+
 def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
     return "".join(random.choice(chars) for _ in range(size))
 
@@ -36,9 +45,11 @@ def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
 def main():
     parser = GlobalArgumentParser()
     args = parser.parse_args()
+    train_keys = args.train_keys.split(",")
+    eval_keys = args.eval_keys.split(",")
 
     checkpoint_name = datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
-    checkpoint_name = "GO" + checkpoint_name + "_" + id_generator(6)
+    checkpoint_name = "GLOTTIS_HLE_" + args.eval_keys + "_" + id_generator(6)
     checkpoint_path = os.path.join("checkpoints/", checkpoint_name)
     os.mkdir(checkpoint_path)
     os.mkdir(os.path.join("checkpoints", checkpoint_name, "results"))
@@ -54,6 +65,10 @@ def main():
         [
             A.HorizontalFlip(p=0.5),
             A.VerticalFlip(p=0.5),
+            A.Rotate(limit=(-40, 40), p=0.5),
+            A.Affine(translate_percent=0.15, p=0.5),
+            A.RandomGamma(),
+            A.RandomBrightnessContrast(),
             A.Perspective(scale=(0.05, 0.2), p=0.5),
             A.Normalize(
                 mean=[0.0],
@@ -75,17 +90,12 @@ def main():
         ]
     )
 
-    train_ds = dataset.FirefliesOnlyGlottis(
-        os.path.join(args.ff_path, "train"), transform=train_transform
+    train_ds = dataset.HLEOnlyGlottis(
+        args.hle_path, transform=train_transform, keys=train_keys, how_many=-1
     )
 
-    val_ds = dataset.FirefliesOnlyGlottis(
-        os.path.join(args.ff_path, "eval"), transform=eval_transform
-    )
-    test_ds = dataset.HLEOnlyGlottis(
-        args.hle_path,
-        ["CF", "CM", "DD", "FH", "LS", "MK", "MS", "RH", "SS", "TM"],
-        transform=eval_transform,
+    val_ds = dataset.HLEOnlyGlottis(
+        args.hle_path, transform=eval_transform, keys=eval_keys, how_many=-1
     )
 
     train_loader = DataLoader(
@@ -101,21 +111,6 @@ def main():
         num_workers=4,
         pin_memory=True,
         shuffle=True,
-    )
-    test_loader_shuffled = DataLoader(
-        test_ds,
-        batch_size=batch_size,
-        num_workers=4,
-        pin_memory=True,
-        shuffle=True,
-    )
-
-    test_loader = DataLoader(
-        test_ds,
-        batch_size=1,
-        num_workers=4,
-        pin_memory=True,
-        shuffle=False,
     )
 
     # Save config stuff
@@ -135,13 +130,10 @@ def main():
         writer = csv.writer(csvfile)
         writer.writerow(
             [
-                "AccuracySyn",
-                "IoUSyn",
-                "LossSyn",
-                "AccuracyReal",
-                "IoUReal",
-                "LossReal",
-                "TrainLoss",
+                "DiveEval",
+                "IoUEval",
+                "LossEval",
+                "LossTrain",
             ]
         )
 
@@ -159,16 +151,10 @@ def main():
         # Train the network
         train_loss = train(train_loader, loss_func, model, scheduler)
 
-        # Evaluate on Validation Set
+        # Eval
         eval_dice, eval_iou, eval_loss = evaluate(val_loader, model, loss_func)
 
-        # Evaluate on Real Data
-        real_dice, real_iou, real_loss = evaluate(
-            test_loader_shuffled, model, loss_func
-        )
-
-        # Save images on real data
-        visualize(test_loader, model, epoch, checkpoint_path)
+        visualize(val_loader, model, epoch, checkpoint_path)
 
         with open(
             os.path.join(checkpoint_path, csv_filename), "a", newline=""
@@ -179,9 +165,6 @@ def main():
                     eval_dice.item(),
                     eval_iou.item(),
                     eval_loss,
-                    real_dice.item(),
-                    real_iou.item(),
-                    real_loss,
                     train_loss,
                 ]
             )
@@ -222,6 +205,9 @@ def visualize(loader, model, epoch, checkpoint_path):
     count = 0
     model.eval()
     for images, gt_seg in loader:
+        if count == 5:
+            break
+
         images = images.to(device=DEVICE)
         gt_seg = gt_seg.to(device=DEVICE)
         pred_seg = (model(images).sigmoid() > 0.5) * 1
@@ -246,7 +232,7 @@ def evaluate(val_loader, model, loss_func):
 
     model.eval()
 
-    dice = torchmetrics.Dice(task="binary")
+    dice = torchmetrics.F1Score(task="binary")
     iou = torchmetrics.JaccardIndex(task="binary")
 
     for images, gt_seg in val_loader:
@@ -266,11 +252,7 @@ def evaluate(val_loader, model, loss_func):
     dice_score = dice.compute()
     iou_score = iou.compute()
 
-    print(
-        "DICE: {0:03f}, IoU: {1:03f}, F1: {2:03f}".format(
-            dice_score, iou_score, f1_score
-        )
-    )
+    print("DICE: {0:03f}, IoU: {1:03f}".format(dice_score, iou_score))
 
     return dice_score, iou_score, running_average / count
 

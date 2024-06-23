@@ -59,9 +59,29 @@ def generate_csv_graph(path: str) -> None:
     plt.show()
 
 
-if __name__ == "__main__":
-    path = "checkpoints/GO2024-06-22-19:47:52_5YXPKL"
+def generate_csv_graph_new(path: str) -> None:
+    eval_path = os.path.join(path, "eval.csv")
+    fig, ax = plt.subplots(ncols=1, nrows=1)
+    fig.canvas.set_window_title(path.split("/")[-1][:5])
 
+    data_frame = pd.read_csv(eval_path)
+    indices = np.arange(0, data_frame.shape[0])
+
+    for key in data_frame.keys():
+        plot_key_in_ax(indices, [key], data_frame, ax)
+
+    ax.legend(loc="upper right")
+
+
+if __name__ == "__main__":
+
+    path = "checkpoints/LossComparison/"
+
+    dir = "DIFO_2024-06-23-12:46:41_89ZKFK"
+    # for dir in os.listdir(path):
     # vis_segmentation_and_image("fireflies_dataset/train/")
-    generate_csv_graph(path)
-    vis_checkpoints_over_time(path, "00015.png")
+    #    generate_csv_graph_new(os.path.join(path, dir))
+    generate_csv_graph_new(os.path.join(path, dir))
+    plt.show()
+
+    vis_checkpoints_over_time(os.path.join(path, dir), "00015.png")

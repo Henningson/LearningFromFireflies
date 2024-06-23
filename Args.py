@@ -21,3 +21,5 @@ class GlobalArgumentParser(argparse.ArgumentParser):
         self.add_argument("--batch_size", type=int)
         self.add_argument("--num_epochs", type=int)
         self.add_argument("--loss", type=str, default="ce")
+        self.add_argument("--eval_keys", type=str, required=False)
+        self.add_argument("--train_keys", type=str, required=False)
