@@ -18,6 +18,8 @@ import csv
 import string
 import random
 
+import monai.losses
+
 from ConfigArgsParser import ConfigArgsParser
 from Args import GlobalArgumentParser
 
@@ -29,6 +31,17 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 torch.manual_seed(0)
 
 
+class AllLoss:
+    def __init__(self):
+        self.ce_loss = monai.losses.DiceCELoss(softmax=True, to_onehot_y=True, dice_lambda=0.0, ce_lambda=1.0)
+        self.dice_loss = monai.losses.DiceCELoss(softmax=True, to_onehot_y=True, dice_lambda=1.0, ce_lambda=0.0)
+        self.focal_loss = monai.losses.FocalLoss(use_softmax=True, to_onehot_y=True)
+
+    def __call__(self, pred, target):
+        return (self.dice_loss(pred, target) + self.focal_loss(pred, target) + self.ce_loss(pred, target) / 3
+
+
+
 def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
     return "".join(random.choice(chars) for _ in range(size))
 
@@ -37,8 +50,21 @@ def main():
     parser = GlobalArgumentParser()
     args = parser.parse_args()
 
-    checkpoint_name = datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
-    checkpoint_name = checkpoint_name + "_" + id_generator(6) + "_WD_W_AFFINE"
+
+    if args.loss == "dice":
+        checkpoint_name = "DICE_"
+    elif args.loss == "focal":
+        checkpoint_name = "FOCAL_"
+    elif args.loss == "difo":
+        checkpoint_name = "DIFO_"
+    elif args.loss == "dicro":
+        checkpoint_name = "DICRO_"
+    elif args.loss == "all":
+        checkpoint_name = "ALL_"
+
+
+    checkpoint_name += datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
+    checkpoint_name += "_" + id_generator(6)
     checkpoint_path = os.path.join("checkpoints/", checkpoint_name)
     os.mkdir(checkpoint_path)
     os.mkdir(os.path.join("checkpoints", checkpoint_name, "results"))
@@ -148,7 +174,22 @@ def main():
         )
 
     model = unet.UNet().to(DEVICE)
-    loss_func = nn.CrossEntropyLoss()
+    
+
+
+    if args.loss == "ce":
+        loss_func = monai.losses.DiceCELoss(softmax=True, to_onehot_y=True, lambda_dice=0.0, lambda_ce=1.0)
+    if args.loss == "dice":
+        loss_func = monai.losses.DiceLoss(softmax=True, to_onehot_y=True)
+    elif args.loss == "focal":
+        loss_func = monai.losses.FocalLoss(use_softmax=True, to_onehot_y=True)
+    elif args.loss == "difo":
+        loss_func = monai.losses.DiceFocalLoss(softmax=True, to_onehot_y=True)
+    elif args.loss == "dicro":
+        loss_func = monai.losses.DiceCELoss(softmax=True, to_onehot_y=True)
+    elif args.loss == "all":
+        loss_func = AllLoss()
+
     optimizer = optim.SGD(
         model.parameters(),
         lr=learning_rate,
@@ -208,7 +249,7 @@ def train(train_loader, loss_func, model, scheduler):
 
         # forward
         pred_seg = model(images)
-        loss = loss_func(pred_seg.float(), gt_seg.long())
+        loss = loss_func(pred_seg.float(), gt_seg.long().unsqueeze(1))
 
         loss.backward()
         scheduler.step()
@@ -268,7 +309,7 @@ def evaluate(val_loader, model, loss_func):
         iou(softmax.cpu(), gt_seg.cpu())
         f1(softmax.cpu(), gt_seg.cpu())
 
-        loss = loss_func(pred_seg.detach(), gt_seg).item()
+        loss = loss_func(pred_seg.detach(), gt_seg.unsqueeze(1)).item()
         running_average += loss
         count += images.shape[0]
 

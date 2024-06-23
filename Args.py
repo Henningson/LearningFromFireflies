@@ -20,3 +20,4 @@ class GlobalArgumentParser(argparse.ArgumentParser):
         self.add_argument("--learning_rate", type=float)
         self.add_argument("--batch_size", type=int)
         self.add_argument("--num_epochs", type=int)
+        self.add_argument("--loss", type=str, default="ce")
