@@ -180,6 +180,9 @@ def train(train_loader, loss_func, model, scheduler):
     running_average = 0.0
     count = 0
     for images, gt_seg in train_loader:
+        if images.shape[0] != 8:
+            continue
+
         scheduler.zero_grad()
 
         images = images.to(device=DEVICE)
