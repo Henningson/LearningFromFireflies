@@ -116,7 +116,7 @@ def main():
 
     test_loader = DataLoader(
         test_ds,
-        batch_size=1,
+        batch_size=batch_size,
         num_workers=4,
         pin_memory=True,
         shuffle=False,
