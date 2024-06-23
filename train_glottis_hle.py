@@ -211,6 +211,9 @@ def visualize(loader, model, epoch, checkpoint_path):
         if count == 5:
             break
 
+        if images.shape[0] != 8:
+            continue
+
         images = images.to(device=DEVICE)
         gt_seg = gt_seg.to(device=DEVICE)
         pred_seg = (model(images).sigmoid() > 0.5) * 1
@@ -239,6 +242,8 @@ def evaluate(val_loader, model, loss_func):
     iou = torchmetrics.JaccardIndex(task="binary")
 
     for images, gt_seg in val_loader:
+        if images.shape[0] != 8:
+            continue
 
         images = images.to(device=DEVICE)
         gt_seg = gt_seg.long().to(device=DEVICE)

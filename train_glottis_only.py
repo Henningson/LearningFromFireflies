@@ -201,6 +201,9 @@ def train(train_loader, loss_func, model, scheduler):
     running_average = 0.0
     count = 0
     for images, gt_seg in train_loader:
+        if images.shape[0] != 8:
+            continue
+
         scheduler.zero_grad()
 
         images = images.to(device=DEVICE)
@@ -226,6 +229,9 @@ def visualize(loader, model, epoch, checkpoint_path):
     count = 0
     model.eval()
     for images, gt_seg in loader:
+        if images.shape[0] != 8:
+            continue
+
         images = images.to(device=DEVICE)
         gt_seg = gt_seg.to(device=DEVICE)
         pred_seg = (model(images).sigmoid() > 0.5) * 1
@@ -250,10 +256,12 @@ def evaluate(val_loader, model, loss_func):
 
     model.eval()
 
-    dice = torchmetrics.Dice(task="binary")
+    dice = torchmetrics.F1Score(task="binary")
     iou = torchmetrics.JaccardIndex(task="binary")
 
     for images, gt_seg in val_loader:
+        if images.shape[0] != 8:
+            continue
 
         images = images.to(device=DEVICE)
         gt_seg = gt_seg.long().to(device=DEVICE)
@@ -270,11 +278,7 @@ def evaluate(val_loader, model, loss_func):
     dice_score = dice.compute()
     iou_score = iou.compute()
 
-    print(
-        "DICE: {0:03f}, IoU: {1:03f}, F1: {2:03f}".format(
-            dice_score, iou_score, f1_score
-        )
-    )
+    print("DICE: {0:03f}, IoU: {1:03f}".format(dice_score, iou_score))
 
     return dice_score, iou_score, running_average / count
 
