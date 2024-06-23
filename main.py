@@ -33,12 +33,12 @@ torch.manual_seed(0)
 
 class AllLoss:
     def __init__(self):
-        self.ce_loss = monai.losses.DiceCELoss(softmax=True, to_onehot_y=True, dice_lambda=0.0, ce_lambda=1.0)
-        self.dice_loss = monai.losses.DiceCELoss(softmax=True, to_onehot_y=True, dice_lambda=1.0, ce_lambda=0.0)
+        self.ce_loss = monai.losses.DiceCELoss(softmax=True, to_onehot_y=True, lambda_dice=0.0, lambda_ce=1.0)
+        self.dice_loss = monai.losses.DiceCELoss(softmax=True, to_onehot_y=True, lambda_dice=1.0, lambda_ce=0.0)
         self.focal_loss = monai.losses.FocalLoss(use_softmax=True, to_onehot_y=True)
 
     def __call__(self, pred, target):
-        return (self.dice_loss(pred, target) + self.focal_loss(pred, target) + self.ce_loss(pred, target) / 3
+        return (self.dice_loss(pred, target) + self.focal_loss(pred, target) + self.ce_loss(pred, target)) / 3
 
 
 
