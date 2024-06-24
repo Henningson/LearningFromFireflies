@@ -157,6 +157,8 @@ def main():
         momentum=0.9,
     )
     scheduler = lr_scheduler.PolynomialLR(optimizer, num_epochs, power=0.9)
+
+    best_iou = 0.0
     for epoch in tqdm(range(num_epochs)):
         scheduler.update_lr()
 
@@ -170,6 +172,14 @@ def main():
         real_dice, real_iou, real_loss = evaluate(
             test_loader_shuffled, model, loss_func
         )
+
+        if real_iou.item() > best_iou:
+            checkpoint = {"optimizer": optimizer.state_dict()} | model.get_statedict()
+            torch.save(
+                checkpoint,
+                "checkpoints/" + checkpoint_name + f"/best_model.pth.tar",
+            )
+            best_iou = real_iou.item()
 
         # Save images on real data
         visualize(test_loader, model, epoch, checkpoint_path)

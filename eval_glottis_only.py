@@ -40,47 +40,60 @@ def main():
         "checkpoints/SYN_GLOTTIS_ONLY/GO_DATAAUG2024-06-23-23:50:04_HWCWZW"
     )
 
-    eval_transform = A.Compose(
-        [
-            A.Normalize(
-                mean=[0.0],
-                std=[1.0],
-                max_pixel_value=255.0,
-            ),
-            ToTensorV2(),
-        ]
+    eval_transform = A.load(
+        os.path.join(checkpoint_path, "val_transform.yaml"), data_format="yaml"
     )
 
-    test_ds = dataset.HLEOnlyGlottis(
-        args.hle_path,
-        ["CF", "CM", "DD", "FH", "LS", "MK", "MS", "RH", "SS", "TM"],
-        how_many=-1,
-        transform=eval_transform,
-    )
+    key_pairs = [["CF", "CM"], ["DD", "FH"], ["LS", "RH"], ["MK", "MS"], ["SS", "TM"]]
 
-    test_loader = DataLoader(
-        test_ds,
-        batch_size=8,
-        num_workers=4,
-        pin_memory=True,
-        shuffle=True,
-    )
+    datasets = []
+    for key_pair in key_pairs:
+        ds = dataset.HLEOnlyGlottis(
+            args.hle_path,
+            key_pair,
+            how_many=-1,
+            transform=eval_transform,
+        )
+        datasets.append(ds)
 
-    model = unet.UNet(out_channels=1).to(DEVICE)
-    model.load_from_dict(os.path.join(checkpoint_path))
-    dice, dice_std, iou, iou_std = evaluate(test_loader, model)
+    loaders = []
+    for ds in datasets:
+        loader = DataLoader(
+            ds,
+            batch_size=8,
+            num_workers=4,
+            pin_memory=True,
+            shuffle=True,
+        )
+        loaders.append(loader)
+
+    model = unet.UNet(
+        out_channels=1,
+        state_dict=torch.load(os.path.join(checkpoint_path, "model.pth.tar")),
+    ).to(DEVICE)
+
+    dices = []
+    ious = []
+
+    for loader in loaders:
+        dice, iou = evaluate(loader, model)
+        dices.append(dice)
+        ious.append(iou)
+
+    dices = np.array(dices)
+    ious = np.array(ious)
+
+    print(
+        f"Dice-Mean: {dices.mean()}, Dice-STD: {dices.std()}, IoU-Mean: {ious.mean()}, IoU-STD: {ious.std()}"
+    )
 
 
 def evaluate(val_loader, model):
-    running_average = 0.0
-    count = 0
-
-    model.eval()
-
     dice = torchmetrics.F1Score(task="binary")
     iou = torchmetrics.JaccardIndex(task="binary")
 
-    for images, gt_seg in val_loader:
+    model.eval()
+    for images, gt_seg in tqdm(val_loader):
         if images.shape[0] != 8:
             continue
 
@@ -92,10 +105,7 @@ def evaluate(val_loader, model):
         dice(softmax.cpu(), gt_seg.cpu())
         iou(softmax.cpu(), gt_seg.cpu())
 
-    dice_score = dice.compute()
-    iou_score = iou.compute()
-
-    return dice_score, iou_score, running_average / count
+    return dice.compute().item(), iou.compute().item()
 
 
 if __name__ == "__main__":

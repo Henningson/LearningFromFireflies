@@ -85,15 +85,31 @@ def find_metric_with_std(base_dir: str, metric_key: str):
     return metric.mean(), metric.std()
 
 
+def find_best_metric_with_std(base_dir: str, metric_key: str):
+    metric = []
+    for dir in os.listdir(base_dir):
+        data_frame = pd.read_csv(os.path.join(base_dir, dir, "eval.csv"))
+        metric.append(find_best_metric_in_data_frame(data_frame, metric_key))
+
+    metric = np.array(metric)
+    print(f"{metric_key}: Mean: {metric.mean()}     STD:{metric.std()}")
+
+    return metric.mean(), metric.std()
+
+
 def find_last_metric_in_data_frame(data_frame, metric_key: str):
     return data_frame[metric_key].values[-1]
+
+
+def find_best_metric_in_data_frame(data_frame, metric_key: str):
+    return data_frame[metric_key].values.max()
 
 
 if __name__ == "__main__":
 
     path = "checkpoints/HLE_GLOTTIS_ONLY/"
-    find_metric_with_std(path, "DiveEval")
-    find_metric_with_std(path, "IoUEval")
+    find_best_metric_with_std(path, "DiveEval")
+    find_best_metric_with_std(path, "IoUEval")
 
     dir = "DIFO_2024-06-23-12:46:41_89ZKFK"
     for dir in os.listdir(path):
