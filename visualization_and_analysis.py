@@ -62,7 +62,7 @@ def generate_csv_graph(path: str) -> None:
 def generate_csv_graph_new(path: str) -> None:
     eval_path = os.path.join(path, "eval.csv")
     fig, ax = plt.subplots(ncols=1, nrows=1)
-    fig.canvas.set_window_title(path.split("/")[-1][:5])
+    fig.canvas.set_window_title(path.split("/")[-1])
 
     data_frame = pd.read_csv(eval_path)
     indices = np.arange(0, data_frame.shape[0])
@@ -73,15 +73,32 @@ def generate_csv_graph_new(path: str) -> None:
     ax.legend(loc="upper right")
 
 
+def find_metric_with_std(base_dir: str, metric_key: str):
+    metric = []
+    for dir in os.listdir(base_dir):
+        data_frame = pd.read_csv(os.path.join(base_dir, dir, "eval.csv"))
+        metric.append(find_last_metric_in_data_frame(data_frame, metric_key))
+
+    metric = np.array(metric)
+    print(f"{metric_key}: Mean: {metric.mean()}     STD:{metric.std()}")
+
+    return metric.mean(), metric.std()
+
+
+def find_last_metric_in_data_frame(data_frame, metric_key: str):
+    return data_frame[metric_key].values[-1]
+
+
 if __name__ == "__main__":
 
-    path = "checkpoints/LossComparison/"
+    path = "checkpoints/HLE_GLOTTIS_ONLY/"
+    find_metric_with_std(path, "DiveEval")
+    find_metric_with_std(path, "IoUEval")
 
     dir = "DIFO_2024-06-23-12:46:41_89ZKFK"
-    # for dir in os.listdir(path):
-    # vis_segmentation_and_image("fireflies_dataset/train/")
-    #    generate_csv_graph_new(os.path.join(path, dir))
-    generate_csv_graph_new(os.path.join(path, dir))
+    for dir in os.listdir(path):
+        generate_csv_graph_new(os.path.join(path, dir))
     plt.show()
 
-    vis_checkpoints_over_time(os.path.join(path, dir), "00015.png")
+    for dir in os.listdir(path):
+        vis_checkpoints_over_time(os.path.join(path, dir), "00000.png")
