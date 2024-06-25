@@ -105,12 +105,36 @@ def find_best_metric_in_data_frame(data_frame, metric_key: str):
     return data_frame[metric_key].values.max()
 
 
+def swap_classes_from_v4_to_v3(path: str, bg_index, glottis_index, vocal_folds_index):
+    img_path = os.path.join(path, "images")
+    segmentation_path = os.path.join(path, "segmentation")
+
+    for im_id in os.listdir(img_path):
+        image = cv2.imread(os.path.join(img_path, im_id), 0)
+        segmentation = cv2.imread(os.path.join(segmentation_path, im_id), 0)
+
+        glottis = (segmentation == glottis_index) * 1
+        background = (segmentation == bg_index) * 1
+        vocal_folds = (segmentation == vocal_folds_index) * 1
+
+        new_seg = np.zeros_like(segmentation)
+        new_seg[vocal_folds == 1] = 0
+        new_seg[glottis == 1] = 1
+        new_seg[background == 1] = 2
+
+        cv2.imwrite(os.path.join(segmentation_path, im_id), new_seg)
+
+
 if __name__ == "__main__":
 
-    path = "checkpoints/HLE_GLOTTIS_ONLY/"
-    find_best_metric_with_std(path, "DiveEval")
-    find_best_metric_with_std(path, "IoUEval")
+    swap_classes_from_v4_to_v3("fireflies_dataset_v4/train", 1, 2, 0)
+    swap_classes_from_v4_to_v3("fireflies_dataset_v4/eval", 1, 2, 0)
 
+    path = "checkpoints/HLE_GLOTTIS_ONLY/"
+    find_metric_with_std(path, "DiveEval")
+    find_metric_with_std(path, "IoUEval")
+
+    """
     dir = "DIFO_2024-06-23-12:46:41_89ZKFK"
     for dir in os.listdir(path):
         generate_csv_graph_new(os.path.join(path, dir))
@@ -118,3 +142,4 @@ if __name__ == "__main__":
 
     for dir in os.listdir(path):
         vis_checkpoints_over_time(os.path.join(path, dir), "00000.png")
+    """

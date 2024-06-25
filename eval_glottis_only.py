@@ -37,7 +37,7 @@ def main():
     parser = GlobalArgumentParser()
     args = parser.parse_args()
     checkpoint_path = (
-        "checkpoints/SYN_GLOTTIS_ONLY/GO_DATAAUG2024-06-23-23:50:04_HWCWZW"
+        "checkpoints/SYN_GLOTTIS_ONLY/GO_DATAAUG2024-06-24-12:41:33_BFH0UM"
     )
 
     eval_transform = A.load(
@@ -69,7 +69,7 @@ def main():
 
     model = unet.UNet(
         out_channels=1,
-        state_dict=torch.load(os.path.join(checkpoint_path, "model.pth.tar")),
+        state_dict=torch.load(os.path.join(checkpoint_path, "best_model.pth.tar")),
     ).to(DEVICE)
 
     dices = []
