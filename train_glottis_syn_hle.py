@@ -36,9 +36,11 @@ def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
 def main():
     parser = GlobalArgumentParser()
     args = parser.parse_args()
+    train_keys = args.train_keys.split(",")
+    eval_keys = args.eval_keys.split(",")
 
     checkpoint_name = datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
-    checkpoint_name = "GO_DATAAUG" + checkpoint_name + "_" + id_generator(6)
+    checkpoint_name = "GO_SYN_HLE_" + checkpoint_name + "_" + id_generator(6)
     checkpoint_path = os.path.join("checkpoints/", checkpoint_name)
     os.mkdir(checkpoint_path)
     os.mkdir(os.path.join("checkpoints", checkpoint_name, "results"))
@@ -79,17 +81,22 @@ def main():
         ]
     )
 
-    train_ds = dataset.FirefliesOnlyGlottis(
-        os.path.join(args.ff_path, "train"), transform=train_transform
+    train_ds = dataset.FFHLEOnlyGlottis(
+        ff_path=os.path.join(args.ff_path, "train"),
+        hle_path=args.hle_path,
+        keys=train_keys,
+        transform=train_transform,
     )
 
     val_ds = dataset.FirefliesOnlyGlottis(
         os.path.join(args.ff_path, "eval"), transform=eval_transform
     )
+
     test_ds = dataset.HLEOnlyGlottis(
         args.hle_path,
-        ["CF", "CM", "DD", "FH", "LS", "MK", "MS", "RH", "SS", "TM"],
+        eval_keys,
         transform=eval_transform,
+        how_many=10,
     )
 
     train_loader = DataLoader(

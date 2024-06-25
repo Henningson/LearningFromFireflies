@@ -89,7 +89,9 @@ def find_best_metric_with_std(base_dir: str, metric_key: str):
     metric = []
     for dir in os.listdir(base_dir):
         data_frame = pd.read_csv(os.path.join(base_dir, dir, "eval.csv"))
-        metric.append(find_best_metric_in_data_frame(data_frame, metric_key))
+        val = find_best_metric_in_data_frame(data_frame, metric_key)
+        print(dir, val)
+        metric.append(val)
 
     metric = np.array(metric)
     print(f"{metric_key}: Mean: {metric.mean()}     STD:{metric.std()}")
@@ -127,12 +129,12 @@ def swap_classes_from_v4_to_v3(path: str, bg_index, glottis_index, vocal_folds_i
 
 if __name__ == "__main__":
 
-    swap_classes_from_v4_to_v3("fireflies_dataset_v4/train", 1, 2, 0)
-    swap_classes_from_v4_to_v3("fireflies_dataset_v4/eval", 1, 2, 0)
+    # swap_classes_from_v4_to_v3("fireflies_dataset_v4/train", 1, 2, 0)
+    # swap_classes_from_v4_to_v3("fireflies_dataset_v4/eval", 1, 2, 0)
 
     path = "checkpoints/HLE_GLOTTIS_ONLY/"
-    find_metric_with_std(path, "DiveEval")
-    find_metric_with_std(path, "IoUEval")
+    find_best_metric_with_std(path, "DiveEval")
+    find_best_metric_with_std(path, "IoUEval")
 
     """
     dir = "DIFO_2024-06-23-12:46:41_89ZKFK"
