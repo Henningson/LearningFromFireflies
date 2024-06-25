@@ -31,15 +31,6 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 torch.manual_seed(0)
 
 
-"""
---train_keys DD,FH,LS,MK,MS,RH,SS,TM --eval_keys CF,CM
---train_keys CF,CM,LS,MK,MS,RH,SS,TM --eval_keys DD,FH
---train_keys CF,CM,DD,FH,MK,MS,SS,TM --eval_keys LS,RH
---train_keys CF,CM,DD,FH,LS,RH,SS,TM --eval_keys MK,MS
---train_keys CF,CM,DD,FH,LS,MK,MS,RH --eval_keys SS,TM
-"""
-
-
 def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
     return "".join(random.choice(chars) for _ in range(size))
 
@@ -50,8 +41,8 @@ def main():
     train_keys = args.train_keys.split(",")
     eval_keys = args.eval_keys.split(",")
 
-    checkpoint_name = "HLE_" + datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
-    checkpoint_name += args.eval_keys + "_" + id_generator(6)
+    checkpoint_name = "SYN_HLE_" + datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
+    checkpoint_name += checkpoint_name + "_" + id_generator(6)
     checkpoint_path = os.path.join("checkpoints/", checkpoint_name)
     os.mkdir(checkpoint_path)
     os.mkdir(os.path.join("checkpoints", checkpoint_name, "results"))
@@ -91,13 +82,22 @@ def main():
             ToTensorV2(),
         ]
     )
-
-    train_ds = dataset.HLEPlusPlus(
-        args.hle_path, transform=train_transform, keys=train_keys, how_many=-1
+    train_ds = dataset.FFHLE(
+        ff_path=os.path.join(args.ff_path, "train"),
+        hle_path=args.hle_path,
+        keys=train_keys,
+        transform=train_transform,
     )
 
-    val_ds = dataset.HLEPlusPlus(
-        args.hle_path, transform=eval_transform, keys=eval_keys, how_many=-1
+    val_ds = dataset.FirefliesDataset(
+        os.path.join(args.ff_path, "eval"), transform=eval_transform
+    )
+
+    val_real = dataset.HLEPlusPlus(
+        args.hle_path,
+        eval_keys,
+        transform=eval_transform,
+        how_many=10,
     )
 
     train_loader = DataLoader(
@@ -113,6 +113,21 @@ def main():
         num_workers=4,
         pin_memory=True,
         shuffle=True,
+    )
+    test_loader_shuffled = DataLoader(
+        val_real,
+        batch_size=batch_size,
+        num_workers=4,
+        pin_memory=True,
+        shuffle=True,
+    )
+
+    test_loader = DataLoader(
+        val_real,
+        batch_size=batch_size,
+        num_workers=4,
+        pin_memory=True,
+        shuffle=False,
     )
 
     # Save config stuff
@@ -132,9 +147,12 @@ def main():
         writer = csv.writer(csvfile)
         writer.writerow(
             [
-                "DiceEval",
-                "IoUEval",
-                "LossEval",
+                "DiceSyn",
+                "IoUSyn",
+                "LossSyn",
+                "DiceReal",
+                "IoUReal",
+                "LossReal",
                 "TrainLoss",
             ]
         )
@@ -147,16 +165,32 @@ def main():
         momentum=0.9,
     )
     scheduler = lr_scheduler.PolynomialLR(optimizer, num_epochs, power=0.9)
+
+    best_iou = 0.0
     for epoch in tqdm(range(num_epochs)):
         scheduler.update_lr()
 
         # Train the network
         train_loss = train(train_loader, loss_func, model, scheduler)
 
-        # Eval
+        # Evaluate on Validation Set
         eval_dice, eval_iou, eval_loss = evaluate(val_loader, model, loss_func)
 
-        visualize(val_loader, model, epoch, checkpoint_path)
+        # Evaluate on Real Data
+        real_dice, real_iou, real_loss = evaluate(
+            test_loader_shuffled, model, loss_func
+        )
+
+        if real_iou.item() > best_iou:
+            checkpoint = {"optimizer": optimizer.state_dict()} | model.get_statedict()
+            torch.save(
+                checkpoint,
+                "checkpoints/" + checkpoint_name + f"/best_model.pth.tar",
+            )
+            best_iou = real_iou.item()
+
+        # Save images on real data
+        visualize(test_loader, model, epoch, checkpoint_path)
 
         with open(
             os.path.join(checkpoint_path, csv_filename), "a", newline=""
@@ -167,6 +201,9 @@ def main():
                     eval_dice.item(),
                     eval_iou.item(),
                     eval_loss,
+                    real_dice.item(),
+                    real_iou.item(),
+                    real_loss,
                     train_loss,
                 ]
             )

@@ -31,13 +31,22 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 torch.manual_seed(0)
 
 
-"""
---train_keys DD,FH,LS,MK,MS,RH,SS,TM --eval_keys CF,CM
---train_keys CF,CM,LS,MK,MS,RH,SS,TM --eval_keys DD,FH
---train_keys CF,CM,DD,FH,MK,MS,SS,TM --eval_keys LS,RH
---train_keys CF,CM,DD,FH,LS,RH,SS,TM --eval_keys MK,MS
---train_keys CF,CM,DD,FH,LS,MK,MS,RH --eval_keys SS,TM
-"""
+class AllLoss:
+    def __init__(self):
+        self.ce_loss = monai.losses.DiceCELoss(
+            softmax=True, to_onehot_y=True, lambda_dice=0.0, lambda_ce=1.0
+        )
+        self.dice_loss = monai.losses.DiceCELoss(
+            softmax=True, to_onehot_y=True, lambda_dice=1.0, lambda_ce=0.0
+        )
+        self.focal_loss = monai.losses.FocalLoss(use_softmax=True, to_onehot_y=True)
+
+    def __call__(self, pred, target):
+        return (
+            self.dice_loss(pred, target)
+            + self.focal_loss(pred, target)
+            + self.ce_loss(pred, target)
+        ) / 3
 
 
 def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
@@ -47,11 +56,9 @@ def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
 def main():
     parser = GlobalArgumentParser()
     args = parser.parse_args()
-    train_keys = args.train_keys.split(",")
-    eval_keys = args.eval_keys.split(",")
 
-    checkpoint_name = "HLE_" + datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
-    checkpoint_name += args.eval_keys + "_" + id_generator(6)
+    checkpoint_name = "SYN_" + datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
+    checkpoint_name += "_" + id_generator(6)
     checkpoint_path = os.path.join("checkpoints/", checkpoint_name)
     os.mkdir(checkpoint_path)
     os.mkdir(os.path.join("checkpoints", checkpoint_name, "results"))
@@ -92,12 +99,18 @@ def main():
         ]
     )
 
-    train_ds = dataset.HLEPlusPlus(
-        args.hle_path, transform=train_transform, keys=train_keys, how_many=-1
+    train_ds = dataset.FirefliesDataset(
+        os.path.join(args.ff_path, "train"), transform=train_transform
     )
 
-    val_ds = dataset.HLEPlusPlus(
-        args.hle_path, transform=eval_transform, keys=eval_keys, how_many=-1
+    val_ds = dataset.FirefliesDataset(
+        os.path.join(args.ff_path, "eval"), transform=eval_transform
+    )
+    val_real_ds = dataset.HLEPlusPlus(
+        args.hle_path,
+        ["CF", "CM", "DD", "FH", "LS", "MK", "MS", "RH", "SS", "TM"],
+        transform=eval_transform,
+        how_many=10,
     )
 
     train_loader = DataLoader(
@@ -113,6 +126,21 @@ def main():
         num_workers=4,
         pin_memory=True,
         shuffle=True,
+    )
+    test_loader_shuffled = DataLoader(
+        val_real_ds,
+        batch_size=batch_size,
+        num_workers=4,
+        pin_memory=True,
+        shuffle=True,
+    )
+
+    test_loader = DataLoader(
+        val_real_ds,
+        batch_size=batch_size,
+        num_workers=4,
+        pin_memory=True,
+        shuffle=False,
     )
 
     # Save config stuff
@@ -132,20 +160,26 @@ def main():
         writer = csv.writer(csvfile)
         writer.writerow(
             [
-                "DiceEval",
-                "IoUEval",
-                "LossEval",
+                "DiceSyn",
+                "IoUSyn",
+                "LossSyn",
+                "DiceReal",
+                "IoUReal",
+                "LossReal",
                 "TrainLoss",
             ]
         )
 
     model = unet.UNet().to(DEVICE)
     loss_func = monai.losses.DiceFocalLoss(softmax=True, to_onehot_y=True)
+
     optimizer = optim.SGD(
         model.parameters(),
         lr=learning_rate,
         momentum=0.9,
     )
+
+    best_iou = 0.0
     scheduler = lr_scheduler.PolynomialLR(optimizer, num_epochs, power=0.9)
     for epoch in tqdm(range(num_epochs)):
         scheduler.update_lr()
@@ -153,10 +187,23 @@ def main():
         # Train the network
         train_loss = train(train_loader, loss_func, model, scheduler)
 
-        # Eval
+        # Evaluate on Validation Set
         eval_dice, eval_iou, eval_loss = evaluate(val_loader, model, loss_func)
 
-        visualize(val_loader, model, epoch, checkpoint_path)
+        # Evaluate on Real Data
+        real_dice, real_iou, real_loss = evaluate(
+            test_loader_shuffled, model, loss_func
+        )
+
+        visualize(test_loader, model, epoch, checkpoint_path)
+
+        if real_iou.item() > best_iou:
+            checkpoint = {"optimizer": optimizer.state_dict()} | model.get_statedict()
+            torch.save(
+                checkpoint,
+                "checkpoints/" + checkpoint_name + f"/best_model.pth.tar",
+            )
+            best_iou = real_iou.item()
 
         with open(
             os.path.join(checkpoint_path, csv_filename), "a", newline=""
@@ -167,6 +214,9 @@ def main():
                     eval_dice.item(),
                     eval_iou.item(),
                     eval_loss,
+                    real_dice.item(),
+                    real_iou.item(),
+                    real_loss,
                     train_loss,
                 ]
             )

@@ -183,7 +183,7 @@ class HLEPlusPlus(Dataset):
             image = augmentations["image"]
             segmentation = augmentations["masks"][0]
 
-        return image, segmentation
+        return image, segmentation.int()
 
 
 class HLEOnlyGlottis(Dataset):
@@ -296,7 +296,7 @@ class FFHLE(Dataset):
     def load_from_multiple_dirs(self, dirs):
         image_data = []
         for dir in dirs:
-            image_data += self.load_images(dir)
+            image_data += self.load_hle_images(dir)
 
         return image_data
 
@@ -313,7 +313,7 @@ class FFHLE(Dataset):
             image = augmentations["image"]
             segmentation = augmentations["masks"][0]
 
-        return image, segmentation
+        return image, segmentation.int()
 
 
 class FFHLEOnlyGlottis(Dataset):
@@ -386,4 +386,4 @@ class FFHLEOnlyGlottis(Dataset):
             image = augmentations["image"]
             segmentation = augmentations["masks"][0]
 
-        return image, segmentation
+        return image, segmentation.int()

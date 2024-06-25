@@ -85,6 +85,20 @@ def find_metric_with_std(base_dir: str, metric_key: str):
     return metric.mean(), metric.std()
 
 
+def find_best_metric_with_std_from_dirs(dirs: str, metric_key: str):
+    metric = []
+    for dir in dirs:
+        data_frame = pd.read_csv(os.path.join(dir, "eval.csv"))
+        val = find_best_metric_in_data_frame(data_frame, metric_key)
+        print(dir, val)
+        metric.append(val)
+
+    metric = np.array(metric)
+    print(f"{metric_key}: Mean: {metric.mean()}     STD:{metric.std()}")
+
+    return metric.mean(), metric.std()
+
+
 def find_best_metric_with_std(base_dir: str, metric_key: str):
     metric = []
     for dir in os.listdir(base_dir):
@@ -133,6 +147,13 @@ if __name__ == "__main__":
     # swap_classes_from_v4_to_v3("fireflies_dataset_v4/eval", 1, 2, 0)
 
     path = "checkpoints/HLE_GLOTTIS_ONLY/"
+
+    dirs = [
+        "checkpoints/HLE_GLOTTIS_ONLY/GLOTTIS_HLE_CF,CM_PRQE6V",
+        "checkpoints/HLE_GLOTTIS_ONLY/GLOTTIS_HLE_DD,FH_WAHK21",
+        "checkpoints/HLE_GLOTTIS_ONLY/GLOTTIS_HLE_LS,RH_0N3F6U",
+        "checkpoints/HLE_GLOTTIS_ONLY/GLOTTIS_HLE_MK,MS_8TS0K7",
+    ]
     find_best_metric_with_std(path, "DiveEval")
     find_best_metric_with_std(path, "IoUEval")
 
