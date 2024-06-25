@@ -92,6 +92,7 @@ def main():
         args.hle_path,
         ["CF", "CM", "DD", "FH", "LS", "MK", "MS", "RH", "SS", "TM"],
         transform=eval_transform,
+        how_many=10,
     )
 
     train_loader = DataLoader(
@@ -182,9 +183,6 @@ def main():
                 "checkpoints/" + checkpoint_name + f"/best_model.pth.tar",
             )
             best_iou = real_iou.item()
-
-        # Save images on real data
-        visualize(test_loader, model, epoch, checkpoint_path)
 
         with open(
             os.path.join(checkpoint_path, csv_filename), "a", newline=""
