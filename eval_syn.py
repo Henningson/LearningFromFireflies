@@ -36,7 +36,7 @@ def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
 def main():
     parser = GlobalArgumentParser()
     args = parser.parse_args()
-    checkpoint_path = "checkpoints/GO_DATAAUG2024-06-25-11:31:08_AMUZOR_v4"
+    checkpoint_path = "checkpoints/SYN/SYN_2024-06-25-18:07:55_5CIAHH"
 
     eval_transform = A.load(
         os.path.join(checkpoint_path, "val_transform.yaml"), data_format="yaml"
@@ -72,7 +72,6 @@ def main():
         loaders.append(loader)
 
     model = unet.UNet(
-        out_channels=1,
         state_dict=torch.load(os.path.join(checkpoint_path, "best_model.pth.tar")),
     ).to(DEVICE)
 

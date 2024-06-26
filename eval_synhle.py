@@ -38,8 +38,8 @@ def main():
     args = parser.parse_args()
 
     checkpoints = [
-        "checkpoints/SYNHLE_GLOTTIS_ONLY/GO_SYN_HLE_2024-06-25-15:20:57_EAWRD2",
-        "checkpoints/SYNHLE_GLOTTIS_ONLY/GO_SYN_HLE_2024-06-25-15:45:24_DRE9L0",
+        "checkpoints/SYNHLE/TODO",
+        "checkpoints/SYNHLE/TODO",
     ]
 
     eval_transform = A.load(
@@ -84,7 +84,6 @@ def main():
             loaders.append(loader)
 
         model = unet.UNet(
-            out_channels=1,
             state_dict=torch.load(os.path.join(checkpoint_path, "best_model.pth.tar")),
         ).to(DEVICE)
 

@@ -36,7 +36,7 @@ def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
 def main():
     parser = GlobalArgumentParser()
     args = parser.parse_args()
-    checkpoint_path = "checkpoints/GO_DATAAUG2024-06-25-11:31:08_AMUZOR_v4"
+    checkpoint_path = "checkpoints/SYN_GLOTTIS/GO_DATAAUG2024-06-25-11:31:08_AMUZOR_v4"
 
     eval_transform = A.load(
         os.path.join(checkpoint_path, "val_transform.yaml"), data_format="yaml"
