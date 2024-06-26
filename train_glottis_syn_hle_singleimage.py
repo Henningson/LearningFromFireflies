@@ -40,7 +40,7 @@ def main():
     eval_keys = args.eval_keys.split(",")
 
     checkpoint_name = (
-        "SYN_HLE_SINGLE"
+        "GO_SYN_HLE_SINGLE"
         + datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
         + "_"
         + id_generator(6)
