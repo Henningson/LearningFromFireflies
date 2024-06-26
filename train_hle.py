@@ -50,8 +50,13 @@ def main():
     train_keys = args.train_keys.split(",")
     eval_keys = args.eval_keys.split(",")
 
-    checkpoint_name = "HLE_" + datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
-    checkpoint_name += args.eval_keys + "_" + id_generator(6)
+    checkpoint_name = (
+        "HLE_"
+        + datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
+        + args.eval_keys
+        + "_"
+        + id_generator(6)
+    )
     checkpoint_path = os.path.join("checkpoints/", checkpoint_name)
     os.mkdir(checkpoint_path)
     os.mkdir(os.path.join("checkpoints", checkpoint_name, "results"))

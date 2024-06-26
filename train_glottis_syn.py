@@ -37,9 +37,13 @@ def main():
     parser = GlobalArgumentParser()
     args = parser.parse_args()
 
-    checkpoint_name = datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
     checkpoint_name = (
-        "GO_DATAAUG" + checkpoint_name + "_" + id_generator(6) + "_" + args.ff_path[-2:]
+        "GO_SYN"
+        + datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
+        + "_"
+        + id_generator(6)
+        + "_"
+        + args.ff_path[-2:]
     )
     checkpoint_path = os.path.join("checkpoints/", checkpoint_name)
     os.mkdir(checkpoint_path)
