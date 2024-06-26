@@ -6,8 +6,6 @@ import torch
 import cv2
 import random
 
-random.seed(0)
-
 from typing import List
 
 

@@ -72,6 +72,8 @@ def main():
 
     f = open(os.path.join(checkpoint_path, "args.txt"), "a")
     f.write(",".join([str(batch_size), str(num_epochs), str(learning_rate)]))
+    f.write(f"Eval keys: {args.eval_keys}")
+    f.write(f"Train keys: {args.train_keys}")
     f.close()
 
     train_transform = A.Compose(
