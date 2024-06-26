@@ -4,6 +4,9 @@ from torch.utils.data import Dataset
 import numpy as np
 import torch
 import cv2
+import random
+
+random.seed(0)
 
 from typing import List
 
@@ -316,6 +319,85 @@ class FFHLE(Dataset):
         return image, segmentation.int()
 
 
+class FFHLESingleImage(Dataset):
+    def __init__(self, ff_path, hle_path, keys, transform=None):
+        image_dir = os.path.join(ff_path, "images")
+        segmentation_dir = os.path.join(ff_path, "segmentation")
+
+        self.transform = transform
+
+        ff_images = self.load_ff_images(image_dir)
+        ff_segmentations = self.load_ff_images(segmentation_dir)
+
+        image_dirs = [os.path.join(hle_path, key, "png/") for key in keys]
+        glottal_mask_dirs = [
+            os.path.join(hle_path, key, "glottal_mask/") for key in keys
+        ]
+        vocalfold_mask_dirs = [os.path.join(hle_path, key, "vf_mask/") for key in keys]
+
+        self.transform = transform
+        hle_images = self.load_from_multiple_dirs(image_dirs)
+        hle_glottal_masks = self.load_from_multiple_dirs(glottal_mask_dirs)
+        hle_vocalfold_masks = self.load_from_multiple_dirs(vocalfold_mask_dirs)
+
+        hle_segmentations = []
+        for glottal_mask, vocalfold_mask in zip(hle_glottal_masks, hle_vocalfold_masks):
+            segmentation = np.ones_like(glottal_mask, dtype=np.uint) * 2
+            segmentation[vocalfold_mask == 255.0] = 0
+            segmentation[glottal_mask == 255.0] = 1
+
+            hle_segmentations.append(segmentation)
+
+        # Let every 12th image be the real image, so that it appears in around every second batch.
+        multiply = len(ff_images) // 12
+        image_index = random.randint(0, len(hle_images) - 1)
+        single_image_list = [hle_images[image_index]] * multiply
+        single_segmentation_list = [hle_segmentations[image_index]] * multiply
+
+        self._images = ff_images + single_image_list
+        self._segmentations = ff_segmentations + single_segmentation_list
+
+    def load_ff_images(self, path) -> List[np.array]:
+        image_data = []
+        for file in sorted(os.listdir(path)):
+            if file.endswith(".png"):
+                img_path = os.path.join(path, file)
+                image_data.append(cv2.imread(img_path, 0))
+
+        return image_data
+
+    def load_hle_images(self, path) -> List[np.array]:
+        image_data = []
+        for i, file in enumerate(sorted(os.listdir(path))):
+            if file.endswith(".png"):
+                img_path = os.path.join(path, file)
+                image_data.append(cv2.imread(img_path, 0))
+
+        return image_data
+
+    def load_from_multiple_dirs(self, dirs):
+        image_data = []
+        for dir in dirs:
+            image_data += self.load_hle_images(dir)
+
+        return image_data
+
+    def __len__(self):
+        return len(self._images)
+
+    def __getitem__(self, index):
+        image = self._images[index]
+        segmentation = self._segmentations[index]
+
+        if self.transform is not None:
+            augmentations = self.transform(image=image, masks=[segmentation])
+
+            image = augmentations["image"]
+            segmentation = augmentations["masks"][0]
+
+        return image, segmentation.int()
+
+
 class FFHLEOnlyGlottis(Dataset):
     def __init__(self, ff_path, hle_path, keys, transform=None):
         image_dir = os.path.join(ff_path, "images")
@@ -347,6 +429,85 @@ class FFHLEOnlyGlottis(Dataset):
 
         self._images = ff_images + hle_images
         self._segmentations = ff_segmentations + hle_segmentations
+
+    def load_ff_images(self, path) -> List[np.array]:
+        image_data = []
+        for file in sorted(os.listdir(path)):
+            if file.endswith(".png"):
+                img_path = os.path.join(path, file)
+                image_data.append(cv2.imread(img_path, 0))
+
+        return image_data
+
+    def load_hle_images(self, path) -> List[np.array]:
+        image_data = []
+        for i, file in enumerate(sorted(os.listdir(path))):
+            if file.endswith(".png"):
+                img_path = os.path.join(path, file)
+                image_data.append(cv2.imread(img_path, 0))
+
+        return image_data
+
+    def load_from_multiple_dirs(self, dirs):
+        image_data = []
+        for dir in dirs:
+            image_data += self.load_hle_images(dir)
+
+        return image_data
+
+    def __len__(self):
+        return len(self._images)
+
+    def __getitem__(self, index):
+        image = self._images[index]
+        segmentation = self._segmentations[index]
+
+        if self.transform is not None:
+            augmentations = self.transform(image=image, masks=[segmentation])
+
+            image = augmentations["image"]
+            segmentation = augmentations["masks"][0]
+
+        return image, segmentation.int()
+
+
+class FFHLEOnlyGlottisSingleImage(Dataset):
+    def __init__(self, ff_path, hle_path, keys, transform=None):
+        image_dir = os.path.join(ff_path, "images")
+        segmentation_dir = os.path.join(ff_path, "segmentation")
+
+        self.transform = transform
+
+        ff_images = self.load_ff_images(image_dir)
+        ff_segmentations = self.load_ff_images(segmentation_dir)
+
+        for i, segmentation in enumerate(ff_segmentations):
+            segmentation[segmentation == 2] = 0
+            ff_segmentations[i] = segmentation
+
+        image_dirs = [os.path.join(hle_path, key, "png/") for key in keys]
+        glottal_mask_dirs = [
+            os.path.join(hle_path, key, "glottal_mask/") for key in keys
+        ]
+
+        self.transform = transform
+        hle_images = self.load_from_multiple_dirs(image_dirs)
+        hle_glottal_masks = self.load_from_multiple_dirs(glottal_mask_dirs)
+
+        hle_segmentations = []
+        for glottal_mask in hle_glottal_masks:
+            segmentation = np.zeros_like(glottal_mask)
+            segmentation[glottal_mask > 0] = 1
+            hle_segmentations.append(segmentation)
+
+        # Let every 12th image be the real image, so that it appears in around every second batch.
+        multiply = len(ff_images) // 12
+        image_index = random.randint(0, len(hle_images) - 1)
+        single_image_list = [hle_images[image_index]] * multiply
+        single_segmentation_list = [hle_segmentations[image_index]] * multiply
+
+        self._images = ff_images + single_image_list
+        self._segmentations = ff_segmentations + single_segmentation_list
 
     def load_ff_images(self, path) -> List[np.array]:
         image_data = []
