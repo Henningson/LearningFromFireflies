@@ -36,56 +36,65 @@ def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
 def main():
     parser = GlobalArgumentParser()
     args = parser.parse_args()
-    checkpoint_path = "checkpoints/GO_DATAAUG2024-06-25-11:31:08_AMUZOR_v4"
+
+    checkpoints = [
+        "checkpoints/SYNHLE_GLOTTIS_SINGLE/GO_SYN_HLE_SINGLE2024-06-26-13:10:16_E20UJG",
+        "checkpoints/SYNHLE_GLOTTIS_SINGLE/GO_SYN_HLE_SINGLE2024-06-26-13:10:26_UOV01T",
+    ]
 
     eval_transform = A.load(
-        os.path.join(checkpoint_path, "val_transform.yaml"), data_format="yaml"
+        os.path.join(checkpoints[0], "val_transform.yaml"), data_format="yaml"
     )
 
-    key_pairs = [
+    key_pairs_a = [
         ["CF", "CM"],
         ["DD", "FH"],
         ["LS", "RH"],
         ["MK", "MS"],
-        ["SS", "TM"],
     ]
 
-    datasets = []
-    for key_pair in key_pairs:
-        ds = dataset.HLEOnlyGlottis(
-            args.hle_path,
-            key_pair,
-            how_many=-1,
-            transform=eval_transform,
-        )
-        datasets.append(ds)
+    key_pairs_b = [["SS", "TM"]]
 
-    loaders = []
-    for ds in datasets:
-        loader = DataLoader(
-            ds,
-            batch_size=8,
-            num_workers=4,
-            pin_memory=True,
-            shuffle=True,
-        )
-        loaders.append(loader)
-
-    model = unet.UNet(
-        out_channels=1,
-        state_dict=torch.load(os.path.join(checkpoint_path, "best_model.pth.tar")),
-    ).to(DEVICE)
+    # Here its getting ugly...
+    key_pairs_combined = [key_pairs_a, key_pairs_b]
 
     dices = []
     ious = []
 
-    for loader, key in zip(loaders, key_pairs):
-        dice, iou = evaluate(loader, model)
-        dices.append(dice)
-        ious.append(iou)
+    for checkpoint_path, key_pairs in zip(checkpoints, key_pairs_combined):
+        datasets = []
+        for key_pair in key_pairs:
+            ds = dataset.HLEOnlyGlottis(
+                args.hle_path,
+                key_pair,
+                how_many=-1,
+                transform=eval_transform,
+            )
+            datasets.append(ds)
 
-        print(key)
-        print(dice, iou)
+        loaders = []
+        for ds in datasets:
+            loader = DataLoader(
+                ds,
+                batch_size=8,
+                num_workers=4,
+                pin_memory=True,
+                shuffle=True,
+            )
+            loaders.append(loader)
+
+        model = unet.UNet(
+            out_channels=1,
+            state_dict=torch.load(os.path.join(checkpoint_path, "best_model.pth.tar")),
+        ).to(DEVICE)
+
+        for loader, key in zip(loaders, key_pairs):
+            dice, iou = evaluate(loader, model)
+            dices.append(dice)
+            ious.append(iou)
+
+            print(key)
+            print(dice, iou)
 
     dices = np.array(dices)
     ious = np.array(ious)

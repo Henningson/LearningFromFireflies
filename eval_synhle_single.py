@@ -38,8 +38,8 @@ def main():
     args = parser.parse_args()
 
     checkpoints = [
-        "checkpoints/SYNHLE_GLOTTIS_ONLY/GO_SYN_HLE_2024-06-25-15:20:57_EAWRD2",
-        "checkpoints/SYNHLE_GLOTTIS_ONLY/GO_SYN_HLE_2024-06-25-15:45:24_DRE9L0",
+        "checkpoints/SYNHLE_SINGLE/SYN_HLE_SINGLE2024-06-26-13:10:27_TYUV3S",
+        "checkpoints/SYNHLE_SINGLE/SYN_HLE_SINGLE2024-06-26-13:10:27_BASFKH",
     ]
 
     eval_transform = A.load(
