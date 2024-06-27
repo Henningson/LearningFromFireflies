@@ -52,7 +52,7 @@ def main():
 
     datasets = []
     for key_pair in key_pairs:
-        ds = dataset.HLEOnlyGlottis(
+        ds = dataset.HLEPlusPlus(
             args.hle_path,
             key_pair,
             how_many=-1,
@@ -95,8 +95,8 @@ def main():
 
 
 def evaluate(val_loader, model):
-    dice = torchmetrics.F1Score(task="binary")
-    iou = torchmetrics.JaccardIndex(task="binary")
+    dice = torchmetrics.F1Score(task="multiclass", num_classes=3)
+    iou = torchmetrics.JaccardIndex(task="multiclass", num_classes=3)
 
     model.eval()
     for images, gt_seg in tqdm(val_loader):

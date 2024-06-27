@@ -38,8 +38,8 @@ def main():
     args = parser.parse_args()
 
     checkpoints = [
-        "checkpoints/SYNHLE/TODO",
-        "checkpoints/SYNHLE/TODO",
+        "checkpoints/SYNHLE/SYN_HLE_2024-06-26-13:10:04_BIQ562",
+        "checkpoints/SYNHLE/SYN_HLE_2024-06-26-13:10:04_0RF4Q9",
     ]
 
     eval_transform = A.load(
@@ -64,7 +64,7 @@ def main():
     for checkpoint_path, key_pairs in zip(checkpoints, key_pairs_combined):
         datasets = []
         for key_pair in key_pairs:
-            ds = dataset.HLEOnlyGlottis(
+            ds = dataset.HLEPlusPlus(
                 args.hle_path,
                 key_pair,
                 how_many=-1,
@@ -104,8 +104,8 @@ def main():
 
 
 def evaluate(val_loader, model):
-    dice = torchmetrics.F1Score(task="binary")
-    iou = torchmetrics.JaccardIndex(task="binary")
+    dice = torchmetrics.F1Score(task="multiclass", num_classes=3)
+    iou = torchmetrics.JaccardIndex(task="multiclass", num_classes=3)
 
     model.eval()
     for images, gt_seg in tqdm(val_loader):
@@ -116,9 +116,17 @@ def evaluate(val_loader, model):
         gt_seg = gt_seg.long().to(device=DEVICE)
 
         pred_seg = model(images).squeeze()
-        softmax = pred_seg.sigmoid()
+        softmax = pred_seg.softmax(dim=1)
         dice(softmax.cpu(), gt_seg.cpu())
         iou(softmax.cpu(), gt_seg.cpu())
+
+        test = images[0].cpu().numpy()
+        seg_inf = softmax.argmax(dim=1)[0].cpu().numpy()
+        gt_seg = gt_seg[0].cpu().numpy()
+
+        test = (test * 255).astype(np.uint8)
+        seg_inf = ((seg_inf / 2) * 255).astype(np.uint8)
+        gt_seg = ((gt_seg / 2) * 255).astype(np.uint8)
 
     return dice.compute().item(), iou.compute().item()
 
