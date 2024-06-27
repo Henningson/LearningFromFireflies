@@ -9,6 +9,25 @@ import random
 from typing import List
 
 
+def swap_ff_labels(segmentations):
+    # Swap labels
+    for i, segmentation in enumerate(segmentations):
+        VF_INDEX = 0
+        GL_INDEX = 1
+        BG_INDEX = 2
+
+        NEW_BG_INDEX = 0
+        NEW_VF_INDEX = 1
+        NEW_GL_INDEX = 2
+
+        new_seg = torch.zeros_like(segmentation)  # Create BG
+        new_seg = torch.where(segmentation == GL_INDEX, NEW_GL_INDEX, new_seg)
+        new_seg = torch.where(segmentation == VF_INDEX, NEW_VF_INDEX, new_seg)
+        segmentations[i] = new_seg
+
+    return segmentations
+
+
 class FirefliesDataset(Dataset):
     def __init__(self, path, transform=None):
         self.base_path = path
@@ -20,8 +39,7 @@ class FirefliesDataset(Dataset):
 
         self._images = self.load_images(image_dir)
         self._segmentations = self.load_images(segmentation_dir)
-
-        self.generate_dataset_fingerprint()
+        self._segmentations = swap_ff_labels(self._segmentations)
 
     def load_images(self, path) -> List[np.array]:
         image_data = []
@@ -58,7 +76,6 @@ class FirefliesDataset(Dataset):
     def __getitem__(self, index):
         image = self._images[index]
         segmentation = self._segmentations[index]
-        segmentation[segmentation == 3] = 2
 
         if self.transform is not None:
             augmentations = self.transform(image=image, masks=[segmentation])
@@ -174,9 +191,9 @@ class HLEPlusPlus(Dataset):
         glottal_mask = self.glottal_masks[index]
         vocalfold_mask = self.vocalfold_masks[index]
 
-        segmentation = np.ones_like(glottal_mask, dtype=np.uint) * 2
-        segmentation[vocalfold_mask == 255.0] = 0
-        segmentation[glottal_mask == 255.0] = 1
+        segmentation = np.zeros_like(glottal_mask, dtype=np.uint)
+        segmentation[vocalfold_mask == 255.0] = 1
+        segmentation[glottal_mask == 255.0] = 2
 
         if self.transform is not None:
             augmentations = self.transform(image=image, masks=[segmentation])
@@ -253,6 +270,7 @@ class FFHLE(Dataset):
 
         ff_images = self.load_ff_images(image_dir)
         ff_segmentations = self.load_ff_images(segmentation_dir)
+        ff_segmentations = swap_ff_labels(self._segmentations)
 
         image_dirs = [os.path.join(hle_path, key, "png/") for key in keys]
         glottal_mask_dirs = [
@@ -267,9 +285,9 @@ class FFHLE(Dataset):
 
         hle_segmentations = []
         for glottal_mask, vocalfold_mask in zip(hle_glottal_masks, hle_vocalfold_masks):
-            segmentation = np.ones_like(glottal_mask, dtype=np.uint) * 2
-            segmentation[vocalfold_mask == 255.0] = 0
-            segmentation[glottal_mask == 255.0] = 1
+            segmentation = np.zeros_like(glottal_mask, dtype=np.uint)
+            segmentation[vocalfold_mask == 255.0] = 1
+            segmentation[glottal_mask == 255.0] = 2
 
             hle_segmentations.append(segmentation)
 
@@ -326,6 +344,7 @@ class FFHLESingleImage(Dataset):
 
         ff_images = self.load_ff_images(image_dir)
         ff_segmentations = self.load_ff_images(segmentation_dir)
+        ff_segmentations = swap_ff_labels(self._segmentations)
 
         image_dirs = [os.path.join(hle_path, key, "png/") for key in keys]
         glottal_mask_dirs = [
@@ -340,9 +359,9 @@ class FFHLESingleImage(Dataset):
 
         hle_segmentations = []
         for glottal_mask, vocalfold_mask in zip(hle_glottal_masks, hle_vocalfold_masks):
-            segmentation = np.ones_like(glottal_mask, dtype=np.uint) * 2
-            segmentation[vocalfold_mask == 255.0] = 0
-            segmentation[glottal_mask == 255.0] = 1
+            segmentation = np.zeros_like(glottal_mask, dtype=np.uint)
+            segmentation[vocalfold_mask == 255.0] = 1
+            segmentation[glottal_mask == 255.0] = 2
 
             hle_segmentations.append(segmentation)
 

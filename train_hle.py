@@ -147,7 +147,7 @@ def main():
         )
 
     model = unet.UNet().to(DEVICE)
-    loss_func = monai.losses.DiceFocalLoss(softmax=True, to_onehot_y=True)
+    loss_func = nn.CrossEntropyLoss()
     optimizer = optim.SGD(
         model.parameters(),
         lr=learning_rate,
@@ -218,6 +218,10 @@ def visualize(loader, model, epoch, checkpoint_path):
     for images, gt_seg in loader:
         if images.shape[0] != 8:
             continue
+
+        if count > 20:
+            break
+
         images = images.to(device=DEVICE)
         gt_seg = gt_seg.to(device=DEVICE)
         pred_seg = model(images).softmax(dim=1).argmax(dim=1)

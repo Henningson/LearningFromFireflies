@@ -177,7 +177,7 @@ def main():
         )
 
     model = unet.UNet().to(DEVICE)
-    loss_func = monai.losses.DiceFocalLoss(softmax=True, to_onehot_y=True)
+    loss_func = nn.CrossEntropyLoss()
 
     optimizer = optim.SGD(
         model.parameters(),
