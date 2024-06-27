@@ -20,9 +20,9 @@ def swap_ff_labels(segmentations):
         NEW_VF_INDEX = 1
         NEW_GL_INDEX = 2
 
-        new_seg = torch.zeros_like(segmentation)  # Create BG
-        new_seg = torch.where(segmentation == GL_INDEX, NEW_GL_INDEX, new_seg)
-        new_seg = torch.where(segmentation == VF_INDEX, NEW_VF_INDEX, new_seg)
+        new_seg = np.zeros_like(segmentation)  # Create BG
+        new_seg = np.where(segmentation == GL_INDEX, NEW_GL_INDEX, new_seg)
+        new_seg = np.where(segmentation == VF_INDEX, NEW_VF_INDEX, new_seg)
         segmentations[i] = new_seg
 
     return segmentations
@@ -270,7 +270,7 @@ class FFHLE(Dataset):
 
         ff_images = self.load_ff_images(image_dir)
         ff_segmentations = self.load_ff_images(segmentation_dir)
-        ff_segmentations = swap_ff_labels(self._segmentations)
+        ff_segmentations = swap_ff_labels(ff_segmentations)
 
         image_dirs = [os.path.join(hle_path, key, "png/") for key in keys]
         glottal_mask_dirs = [
@@ -344,7 +344,7 @@ class FFHLESingleImage(Dataset):
 
         ff_images = self.load_ff_images(image_dir)
         ff_segmentations = self.load_ff_images(segmentation_dir)
-        ff_segmentations = swap_ff_labels(self._segmentations)
+        ff_segmentations = swap_ff_labels(ff_segmentations)
 
         image_dirs = [os.path.join(hle_path, key, "png/") for key in keys]
         glottal_mask_dirs = [

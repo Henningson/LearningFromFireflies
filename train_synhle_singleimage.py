@@ -234,7 +234,7 @@ def train(train_loader, loss_func, model, scheduler):
 
         # forward
         pred_seg = model(images)
-        loss = loss_func(pred_seg.float(), gt_seg.long().unsqueeze(1))
+        loss = loss_func(pred_seg.float(), gt_seg.long())
 
         loss.backward()
         scheduler.step()
@@ -296,7 +296,7 @@ def evaluate(val_loader, model, loss_func):
         dice(softmax.cpu(), gt_seg.cpu())
         iou(softmax.cpu(), gt_seg.cpu())
 
-        loss = loss_func(pred_seg.detach(), gt_seg.unsqueeze(1)).item()
+        loss = loss_func(pred_seg.detach(), gt_seg).item()
         running_average += loss
         count += images.shape[0]
 
