@@ -36,7 +36,7 @@ def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
 def main():
     parser = GlobalArgumentParser()
     args = parser.parse_args()
-    checkpoint_path = "checkpoints/SYN/SYN_2024-06-25-18:07:55_5CIAHH"
+    checkpoint_path = "checkpoints/CROSS_ENTROPY/SYN/SYN_2024-06-28-00:02:52_GRLD45"
 
     eval_transform = A.load(
         os.path.join(checkpoint_path, "val_transform.yaml"), data_format="yaml"
@@ -95,8 +95,8 @@ def main():
 
 
 def evaluate(val_loader, model):
-    dice = torchmetrics.F1Score(task="multiclass", num_classes=3)
-    iou = torchmetrics.JaccardIndex(task="multiclass", num_classes=3)
+    dice = torchmetrics.F1Score(task="multiclass", num_classes=3, ignore_index=0)
+    iou = torchmetrics.JaccardIndex(task="multiclass", num_classes=3, ignore_index=0)
 
     model.eval()
     for images, gt_seg in tqdm(val_loader):
@@ -107,7 +107,7 @@ def evaluate(val_loader, model):
         gt_seg = gt_seg.long().to(device=DEVICE)
 
         pred_seg = model(images).squeeze()
-        softmax = pred_seg.sigmoid()
+        softmax = pred_seg.softmax(dim=1)
         dice(softmax.cpu(), gt_seg.cpu())
         iou(softmax.cpu(), gt_seg.cpu())
 

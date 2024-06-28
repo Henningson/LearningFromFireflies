@@ -146,20 +146,7 @@ if __name__ == "__main__":
     # swap_classes_from_v4_to_v3("fireflies_dataset_v4/train", 1, 2, 0)
     # swap_classes_from_v4_to_v3("fireflies_dataset_v4/eval", 1, 2, 0)
 
-    dirs = [
-        "checkpoints/HLE_GLOTTIS_ONLY/GLOTTIS_HLE_CF,CM_PRQE6V",
-        "checkpoints/HLE_GLOTTIS_ONLY/GLOTTIS_HLE_DD,FH_WAHK21",
-        "checkpoints/HLE_GLOTTIS_ONLY/GLOTTIS_HLE_LS,RH_0N3F6U",
-        "checkpoints/HLE_GLOTTIS_ONLY/GLOTTIS_HLE_MK,MS_8TS0K7",
-    ]
-
-    print("HLE ON GLOTTIS")
-    path_glottis_hle = "checkpoints/HLE_GLOTTIS/"
-    find_best_metric_with_std(path_glottis_hle, "DiveEval")
-    find_best_metric_with_std(path_glottis_hle, "IoUEval")
-
-    print("HLE ON GLOTTIS AND VOCAL FOLD")
-    path_hle = "checkpoints/HLE/"
+    path_hle = "checkpoints/CROSS_ENTROPY/HLE/"
     find_best_metric_with_std(path_hle, "DiceEval")
     find_best_metric_with_std(path_hle, "IoUEval")
 

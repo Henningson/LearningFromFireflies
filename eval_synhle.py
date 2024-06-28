@@ -38,8 +38,8 @@ def main():
     args = parser.parse_args()
 
     checkpoints = [
-        "checkpoints/SYNHLE/SYN_HLE_2024-06-26-13:10:04_BIQ562",
-        "checkpoints/SYNHLE/SYN_HLE_2024-06-26-13:10:04_0RF4Q9",
+        "checkpoints/CROSS_ENTROPY/SYNHLE/SYN_HLE_2024-06-28-00:55:21_6VWPCE",
+        "checkpoints/CROSS_ENTROPY/SYNHLE/SYN_HLE_2024-06-28-00:56:29_V4RTLL",
     ]
 
     eval_transform = A.load(
@@ -104,8 +104,8 @@ def main():
 
 
 def evaluate(val_loader, model):
-    dice = torchmetrics.F1Score(task="multiclass", num_classes=3)
-    iou = torchmetrics.JaccardIndex(task="multiclass", num_classes=3)
+    dice = torchmetrics.F1Score(task="multiclass", num_classes=3, ignore_index=0)
+    iou = torchmetrics.JaccardIndex(task="multiclass", num_classes=3, ignore_index=0)
 
     model.eval()
     for images, gt_seg in tqdm(val_loader):
