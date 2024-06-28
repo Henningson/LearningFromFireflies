@@ -248,8 +248,8 @@ def evaluate(val_loader, model, loss_func):
 
     model.eval()
 
-    dice = torchmetrics.F1Score(task="multiclass", num_classes=3)
-    iou = torchmetrics.JaccardIndex(task="multiclass", num_classes=3)
+    dice = torchmetrics.F1Score(task="multiclass", num_classes=3, ignore_index=0)
+    iou = torchmetrics.JaccardIndex(task="multiclass", num_classes=3, ignore_index=0)
 
     for images, gt_seg in val_loader:
         if images.shape[0] != 8:
